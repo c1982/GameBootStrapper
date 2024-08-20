@@ -52,14 +52,11 @@ namespace GameBootStrapper.Unity.Runtime
             try
             {
                 var result = await Task.Run(() => Task.FromResult(task(ctx)), cancellationToken: ctx.ct)
-                    .TimeOut(meta.Timeout, ctx.ct)
-                    .ContinueWith( t =>
-                    {
-                        ctx.IncrementCompletedTaskCount();
-                        progress?.Invoke(CalculateProgressPercentage(ctx));
-                        Debug.Log($"Step {task.Method.Name} completed with result: {t.Result.Success}");
-                        return t.Result;
-                    });
+                    .TimeOut(meta.Timeout, ctx.ct);
+                
+                ctx.IncrementCompletedTaskCount();
+                progress?.Invoke(CalculateProgressPercentage(ctx));
+                Debug.Log($"Step {task.Method.Name} completed with result: {result.Success}");
                 
                 if(meta.SuppressError)
                     return new BootStrapResult(){ Success = true , Message = "Suppressed error"};
