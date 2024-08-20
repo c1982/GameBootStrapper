@@ -15,9 +15,14 @@ GameBootStrapper is a flexible and powerful framework designed for managing and 
     Clone the repository or download the latest release from GitHub.
     Copy the GameBootStrapper folder into your Unity project's Assets directory.
 
+or
+
+    Install the package from the Unity Package Manager using the Git URL: 
+    https://github.com/c1982/GameBootStrapper.git?path=Boot/Assets/Scripts/GameBootStrapper.Unity
+
 ## Getting Started
 
-1. Define Your Bootstrap Tasks
+### 1. Define Your Bootstrap Tasks
 
 Create your bootstrapping tasks by defining methods that take a BootStrapContext as a parameter and return a BootStrapResult.
 
@@ -49,7 +54,7 @@ public class MyGameBootstrap
 }
 ```
 
-2. Create and Configure BootStrapContext
+### 2. Create and Configure BootStrapContext
 
 The BootStrapContext manages the state of the bootstrapping process, including cancellation and progress tracking.
 
@@ -60,7 +65,7 @@ var context = new BootStrapContext
 };
 ```
 
-3. Run Bootstrapping Tasks
+### 3. Run Bootstrapping Tasks
 
 Use the BootStrapRunner.RunTasks method to execute your bootstrapping tasks. The method returns a BootStrapResult indicating the overall success or failure of the bootstrapping process.
 
@@ -100,7 +105,7 @@ public class GameInitializer : MonoBehaviour
 }
 ```
 
-4. Handling Timeouts and Errors
+### 4. Handling Timeouts and Errors
 
 Tasks can be configured to timeout or suppress errors using the [BootStep] attribute. By default, if a task fails, the remaining tasks are canceled. You can change this behavior by setting SuppressError = true.
 
@@ -113,7 +118,8 @@ public BootStrapResult LoadOptionalData(BootStrapContext ctx)
 }
 ```
 
-5. Advanced Usage
+### 5. Advanced Usage
+
    Handling Cancellations
 
 You can cancel the bootstrapping process programmatically by calling context.cancellationTokenSource.Cancel().
