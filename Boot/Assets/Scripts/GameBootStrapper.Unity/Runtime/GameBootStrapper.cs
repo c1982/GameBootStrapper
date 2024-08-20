@@ -24,7 +24,9 @@ namespace GameBootStrapper.Unity.Runtime
                 switch (meta.TaskType)
                 {
                     case BootStrapTaskType.Sequential:
-                        _ = await ExecuteTaskAsync(fn, ctx, progress, meta);
+                        var result = await ExecuteTaskAsync(fn, ctx, progress, meta);
+                        if (!result.Success)
+                            return result;
                         break;
                     case BootStrapTaskType.Parallel:
                         parallelTasks.Add(ExecuteTaskAsync(fn, ctx, progress, meta));
@@ -49,12 +51,16 @@ namespace GameBootStrapper.Unity.Runtime
         {
             try
             {
-                var result = await Task.Run(() => Task.FromResult(task(ctx)), cancellationToken: ctx.ct).TimeOut(meta.Timeout, ctx.ct);
-                Debug.Log($"Step {task.Method.Name} completed with result: {result.Success}");
+                var result = await Task.Run(() => Task.FromResult(task(ctx)), cancellationToken: ctx.ct)
+                    .TimeOut(meta.Timeout, ctx.ct)
+                    .ContinueWith( t =>
+                    {
+                        ctx.IncrementCompletedTaskCount();
+                        progress?.Invoke(CalculateProgressPercentage(ctx));
+                        Debug.Log($"Step {task.Method.Name} completed with result: {t.Result.Success}");
+                        return t.Result;
+                    });
                 
-                ctx.IncrementCompletedTaskCount();
-                progress?.Invoke(CalculateProgressPercentage(ctx));
-
                 if(meta.SuppressError)
                     return new BootStrapResult(){ Success = true , Message = "Suppressed error"};
                 
@@ -82,7 +88,6 @@ namespace GameBootStrapper.Unity.Runtime
         {
             var timeoutTask = Task.Delay(timeout, cancellationToken);
             var completedTask = await Task.WhenAny(task, timeoutTask);
-
             if (completedTask == timeoutTask)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -96,5 +101,4 @@ namespace GameBootStrapper.Unity.Runtime
             return await task;
         }
     }
-
 }
