@@ -1,7 +1,7 @@
 {
   "name": "com.mage.bootstrapper",
   "version": "1.0.0",
-  "author": { "name": "Mage Games", "url": "https://github.com/c1982/UnityGameLauncher" },
+  "author": { "name": "Mage Games", "url": "https://github.com/c1982/GameBootStrapper"},
   "displayName": "Mage.BootStrapper",
   "description": "Game BootStrapper",
   "unity": "2022.3",
