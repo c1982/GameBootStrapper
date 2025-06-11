@@ -14,7 +14,7 @@ namespace GameBootStrapper.Unity.Runtime
             params Func<BootStrapContext, BootStrapResult>[] tasks)
         {
             ctx.totalTaskCount = tasks.Length;
-            var parallelTasks = new List<Task<BootStrapResult>>();
+            var parallelTasks = new List<(Task<BootStrapResult> Task, bool Suppress)>();
             foreach (var fn in tasks)
             {
                 var meta = fn.Method.GetCustomAttribute<BootStepAttribute>();
@@ -25,11 +25,11 @@ namespace GameBootStrapper.Unity.Runtime
                 {
                     case BootStrapTaskType.Sequential:
                         var result = await ExecuteTaskAsync(fn, ctx, progress, meta);
-                        if (!result.Success)
+                        if (!result.Success && !meta.SuppressError)
                             return result;
                         break;
                     case BootStrapTaskType.Parallel:
-                        parallelTasks.Add(ExecuteTaskAsync(fn, ctx, progress, meta));
+                        parallelTasks.Add((ExecuteTaskAsync(fn, ctx, progress, meta), meta.SuppressError));
                         break;
                     case BootStrapTaskType.Forget:
                         _ = ExecuteTaskAsync(fn, ctx, progress, meta);
@@ -37,12 +37,13 @@ namespace GameBootStrapper.Unity.Runtime
                 }
             }
 
-            if (!parallelTasks.Any()) 
+            if (!parallelTasks.Any())
                 return new BootStrapResult() { Success = true };
-            
-            var parallelTaskResults = await Task.WhenAll(parallelTasks);
-            var failedTaskResult = parallelTaskResults.FirstOrDefault(r => !r.Success);
-            
+
+            var parallelTaskResults = await Task.WhenAll(parallelTasks.Select(p => p.Task));
+            var zipped = parallelTaskResults.Zip(parallelTasks, (result, info) => new { result, info.Suppress });
+            var failedTaskResult = zipped.FirstOrDefault(p => !p.result.Success && !p.Suppress)?.result;
+
             return failedTaskResult ?? new BootStrapResult { Success = true };
         }
 
@@ -51,19 +52,16 @@ namespace GameBootStrapper.Unity.Runtime
         {
             try
             {
-                var result = await Task.Run(() => Task.FromResult(task(ctx)), cancellationToken: ctx.ct)
+                var result = await Task.Run(() => task(ctx), ctx.ct)
                     .TimeOut(meta.Timeout, ctx.ct);
                 
                 ctx.IncrementCompletedTaskCount();
                 progress?.Invoke(CalculateProgressPercentage(ctx));
                 Debug.Log($"Step {task.Method.Name} completed with result: {result.Success}");
                 
-                if(meta.SuppressError)
-                    return new BootStrapResult(){ Success = true , Message = "Suppressed error"};
-                
-                if (!result.Success)
+                if (!result.Success && !meta.SuppressError)
                     ctx.cancellationTokenSource.Cancel();
-                
+
                 return result;
             }
             catch (Exception ex)
